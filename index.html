@@ -3,56 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Teste Registo Cagarros</title>
+  <title>Registo de Cagarros / Shearwater Log</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 400px;
+      margin: 20px auto;
+      padding: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 15px;
+    }
+    select, input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px;
+      background: #00796B;
+      color: white;
+      border: none;
+      font-size: 1.1em;
+      width: 100%;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>Teste Registo Cagarros</h1>
+  <h1>Registo de Cagarros / Shearwater Log</h1>
 
   <form id="formRegisto">
     <label>
-      Nome do voluntário:
-      <input type="text" id="nome" required />
-    </label><br><br>
+      Nome do voluntário / Volunteer name:
+      <input type="text" name="nome" id="nome" required />
+    </label>
 
     <label>
-      Estado da ave:
-      <select id="estado" required>
-        <option value="">-- Escolha --</option>
-        <option value="vivo">Vivo</option>
-        <option value="ferido">Ferido</option>
-        <option value="morto">Morto</option>
-        <option value="sujo com óleo">Sujo com óleo</option>
-        <option value="não sei descrever">Não sei descrever</option>
+      Estado da ave / Bird condition:
+      <select name="estado" id="estado" required>
+        <option value="">-- Escolha / Choose --</option>
+        <option value="vivo / alive">Vivo / Alive</option>
+        <option value="ferido / injured">Ferido / Injured</option>
+        <option value="morto / dead">Morto / Dead</option>
+        <option value="sujo com óleo / covered in oil">Sujo com óleo / Covered in oil</option>
+        <option value="não sei descrever / unknown">Não sei descrever / Unknown</option>
       </select>
-    </label><br><br>
+    </label>
 
-    <button type="submit">Registar</button>
+    <button type="submit">Registar / Register</button>
   </form>
 
-  <div id="resultado" style="margin-top:20px; font-weight:bold;"></div>
+  <div id="result"></div>
 
   <script>
-    const form = document.getElementById('formRegisto');
-    const resultado = document.getElementById('resultado');
+    const form = document.getElementById("formRegisto");
+    const resultDiv = document.getElementById("result");
 
-    // Substitui pelo teu URL do Web App
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwPOFIUAMXRZePWrVJPLijUhPK1E9wsMs1cJ1ZNFraWn4B7SJSbVHKgAPQPVBIt86D/exec";
+    // URL do proxy no Glitch
+    const PROXY_URL = "https://flicker-tundra-dimple.glitch.me/proxy";
 
-    // Função para calcular fase da lua (simplificada)
     function getMoonPhase() {
       const now = new Date();
       const diff = (now - new Date("2001-01-01")) / 86400000;
       const phase = diff % 29.53;
 
       const phases = [
-        "Lua Nova",
-        "Crescente",
-        "Quarto Crescente",
-        "Gibosa Crescente",
-        "Lua Cheia",
-        "Gibosa Minguante",
-        "Quarto Minguante",
-        "Minguante"
+        "Lua Nova / New Moon",
+        "Crescente / Waxing Crescent",
+        "Quarto Crescente / First Quarter",
+        "Gibosa Crescente / Waxing Gibbous",
+        "Lua Cheia / Full Moon",
+        "Gibosa Minguante / Waning Gibbous",
+        "Quarto Minguante / Last Quarter",
+        "Minguante / Waning Crescent"
       ];
 
       const phaseName = phases[Math.floor(phase / 3.69) % phases.length];
@@ -61,65 +91,73 @@
       return { phaseName, lightPercent };
     }
 
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      resultado.textContent = 'A registar...';
+    async function getConcelho(lat, lon) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        return data.address.county || data.address.municipality || "Desconhecido / Unknown";
+      } catch {
+        return "Desconhecido / Unknown";
+      }
+    }
 
-      const nome = document.getElementById('nome').value.trim();
-      const estado = document.getElementById('estado').value;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      resultDiv.textContent = "A registar... / Registering...";
+
+      const nome = document.getElementById("nome").value.trim();
+      const estado = document.getElementById("estado").value;
 
       if (!nome || !estado) {
-        alert('Por favor, preencha todos os campos.');
-        resultado.textContent = '';
+        alert("Por favor, preencha todos os campos / Please fill all fields.");
         return;
       }
 
       if (!navigator.geolocation) {
-        alert('Geolocalização não suportada no seu navegador.');
-        resultado.textContent = '';
+        alert("Geolocalização não suportada / Geolocation not supported.");
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(position => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
 
         const { phaseName, lightPercent } = getMoonPhase();
+        const concelho = await getConcelho(lat, lon);
 
-        const concelho = "Desconhecido"; // Aqui podes usar API se quiseres
-
-        const dados = {
+        const data = {
           nome,
           estado,
-          latitude,
-          longitude,
+          latitude: lat,
+          longitude: lon,
           faseLua: phaseName,
           percentagemLua: lightPercent,
           concelho
         };
 
-        fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dados)
-        })
-        .then(res => res.json())
-        .then(json => {
+        try {
+          const res = await fetch(PROXY_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+          });
+
+          const json = await res.json();
+
           if (json.success) {
-            resultado.textContent = `Registo efetuado com sucesso! Código: ${json.id}`;
+            resultDiv.textContent = `Registo efetuado com sucesso! / Successfully registered! Código: ${json.id}`;
             form.reset();
           } else {
-            resultado.textContent = 'Erro ao registar. Tente novamente.';
+            resultDiv.textContent = "Erro no registo. / Registration error.";
           }
-        })
-        .catch(() => {
-          resultado.textContent = 'Erro de comunicação com o servidor.';
-        });
-
+        } catch (err) {
+          resultDiv.textContent = "Erro na comunicação com o servidor. / Server communication error.";
+          console.error(err);
+        }
       }, () => {
-        alert('Não foi possível obter a localização.');
-        resultado.textContent = '';
-      });
+        alert("Não foi possível obter a localização GPS. / Could not get GPS location.");
+        resultDiv.textContent = "";
+      }, { enableHighAccuracy: true, timeout: 10000 });
     });
   </script>
 </body>
