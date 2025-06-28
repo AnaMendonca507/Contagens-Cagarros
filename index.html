@@ -1,163 +1,63 @@
+<!-- Usa este ficheiro no GitHub Pages -->
 <!DOCTYPE html>
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Registo de Cagarros / Shearwater Log</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 15px;
-    }
-    label {
-      display: block;
-      margin-bottom: 15px;
-    }
-    select, input[type="text"] {
-      width: 100%;
-      padding: 8px;
-      font-size: 1em;
-    }
-    button {
-      padding: 10px;
-      background: #00796B;
-      color: white;
-      border: none;
-      font-size: 1.1em;
-      width: 100%;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    #result {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-  </style>
 </head>
 <body>
-  <h1>Registo de Cagarros / Shearwater Log</h1>
+  <h1>Registo de Cagarros</h1>
 
   <form id="formRegisto">
-    <label>
-      Nome do voluntário / Volunteer name:
-      <input type="text" name="nome" id="nome" required />
-    </label>
+    <label>Nome do voluntário:
+      <input type="text" id="nome" required />
+    </label><br><br>
 
-    <label>
-      Estado da ave / Bird condition:
-      <select name="estado" id="estado" required>
-        <option value="">-- Escolha / Choose --</option>
-        <option value="vivo / alive">Vivo / Alive</option>
-        <option value="ferido / injured">Ferido / Injured</option>
-        <option value="morto / dead">Morto / Dead</option>
-        <option value="sujo com óleo / covered in oil">Sujo com óleo / Covered in oil</option>
-        <option value="não sei descrever / unknown">Não sei descrever / Unknown</option>
+    <label>Estado da ave:
+      <select id="estado" required>
+        <option value="">-- Escolha --</option>
+        <option value="vivo">Vivo</option>
+        <option value="ferido">Ferido</option>
+        <option value="morto">Morto</option>
+        <option value="sujo com óleo">Sujo com óleo</option>
+        <option value="não sei descrever">Não sei descrever</option>
       </select>
-    </label>
+    </label><br><br>
 
-    <button type="submit">Registar / Register</button>
+    <button type="submit">Registar</button>
   </form>
 
-  <div id="result"></div>
+  <div id="resultado" style="margin-top: 20px;"></div>
 
   <script>
     const form = document.getElementById("formRegisto");
-    const resultDiv = document.getElementById("result");
-
-    // URL do proxy no Glitch
+    const resultado = document.getElementById("resultado");
     const PROXY_URL = "https://flicker-tundra-dimple.glitch.me/proxy";
 
-    function getMoonPhase() {
-      const now = new Date();
-      const diff = (now - new Date("2001-01-01")) / 86400000;
-      const phase = diff % 29.53;
-
-      const phases = [
-        "Lua Nova / New Moon",
-        "Crescente / Waxing Crescent",
-        "Quarto Crescente / First Quarter",
-        "Gibosa Crescente / Waxing Gibbous",
-        "Lua Cheia / Full Moon",
-        "Gibosa Minguante / Waning Gibbous",
-        "Quarto Minguante / Last Quarter",
-        "Minguante / Waning Crescent"
-      ];
-
-      const phaseName = phases[Math.floor(phase / 3.69) % phases.length];
-      const lightPercent = Math.round(Math.pow(Math.sin(Math.PI * phase / 29.53), 2) * 100);
-
-      return { phaseName, lightPercent };
-    }
-
-    async function getConcelho(lat, lon) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-        const data = await res.json();
-        return data.address.county || data.address.municipality || "Desconhecido / Unknown";
-      } catch {
-        return "Desconhecido / Unknown";
-      }
-    }
-
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", e => {
       e.preventDefault();
-      resultDiv.textContent = "A registar... / Registering...";
+      resultado.textContent = "A registar...";
 
       const nome = document.getElementById("nome").value.trim();
       const estado = document.getElementById("estado").value;
 
-      if (!nome || !estado) {
-        alert("Por favor, preencha todos os campos / Please fill all fields.");
-        return;
-      }
-
-      if (!navigator.geolocation) {
-        alert("Geolocalização não suportada / Geolocation not supported.");
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        const { phaseName, lightPercent } = getMoonPhase();
-        const concelho = await getConcelho(lat, lon);
-
-        const data = {
-          nome,
-          estado,
-          latitude: lat,
-          longitude: lon,
-          faseLua: phaseName,
-          percentagemLua: lightPercent,
-          concelho
-        };
-
-        try {
-          const res = await fetch(PROXY_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-          });
-
-          const json = await res.json();
-
-          if (json.success) {
-            resultDiv.textContent = `Registo efetuado com sucesso! / Successfully registered! Código: ${json.id}`;
-            form.reset();
-          } else {
-            resultDiv.textContent = "Erro no registo. / Registration error.";
-          }
-        } catch (err) {
-          resultDiv.textContent = "Erro na comunicação com o servidor. / Server communication error.";
-          console.error(err);
+      fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, estado })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          resultado.textContent = `Registo efetuado com sucesso! Código: ${data.id || "N/A"}`;
+        } else {
+          resultado.textContent = "Erro no registo.";
         }
-      }, () => {
-        alert("Não foi possível obter a localização GPS. / Could not get GPS location.");
-        resultDiv.textContent = "";
-      }, { enableHighAccuracy: true, timeout: 10000 });
+      })
+      .catch(() => {
+        resultado.textContent = "Erro na comunicação com o servidor.";
+      });
     });
   </script>
 </body>
